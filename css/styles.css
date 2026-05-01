@@ -468,3 +468,193 @@ h2 { font-size: 22px; line-height: 1.15; }
 
 /* Misc */
 .brick .row.gap-sm { margin-top: 10px; }
+
+/* ---------- Photo hero (Jolt v2) ---------- */
+.photo-hero {
+  position: relative;
+  padding: 0;
+  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+.hero-photo {
+  position: absolute; inset: 0;
+  background-size: cover;
+  background-position: center;
+  border-radius: var(--r-lg);
+}
+.hero-photo-overlay {
+  position: absolute; inset: 0;
+  border-radius: var(--r-lg);
+  background:
+    linear-gradient(180deg, rgba(20,17,15,0.10) 0%, rgba(20,17,15,0.55) 55%, rgba(20,17,15,0.92) 100%),
+    radial-gradient(60% 40% at 30% 20%, rgba(201,163,91,0.22), transparent 70%);
+}
+.hero-text-photo { position: relative; padding: 22px; }
+.hero-text-photo h1 { font-size: 44px; line-height: 1.0; color: var(--bone); }
+.hero-text-photo .lede { color: var(--bone); }
+.photo-hero .hero-text { position: relative; padding: 22px 22px 14px; }
+.photo-hero .hero-meta { position: relative; padding: 0 22px 22px; }
+.hero-compact { min-height: 180px; margin-bottom: 14px; }
+.hero-compact .hero-text { padding: 16px; }
+.hero-compact .lede { font-size: 14.5px; line-height: 1.4; }
+
+/* Wordmark with bolt logo */
+.wordmark { display: flex; align-items: center; gap: 8px; color: var(--brass); margin-bottom: 6px; }
+.wordmark-text {
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 600;
+  font-style: italic;
+  font-size: 16px;
+  letter-spacing: 0.02em;
+  color: var(--brass);
+}
+.logo-mark { display: inline-flex; color: var(--brass); }
+.logo-mark svg { display: block; }
+
+/* ---------- Expandable task cards ---------- */
+.tasks-help { font-size: 12.5px; color: var(--bone-mute); padding: 0 4px 8px; line-height: 1.4; }
+.task-card {
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  margin-bottom: 10px;
+  overflow: hidden;
+  transition: border-color .2s, background .2s;
+}
+.task-card.done { border-color: var(--brass-soft); background: linear-gradient(180deg, #1F1A14 0%, #1A1610 100%); }
+.task-head {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 14px;
+  cursor: pointer;
+  min-height: 56px;
+}
+.check-btn {
+  width: 30px; height: 30px;
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; color: var(--bone-mute);
+  flex-shrink: 0;
+  background: transparent;
+  transition: border-color .15s, color .15s, background .15s;
+}
+.task-card.done .check-btn { border-color: var(--brass); color: var(--brass); background: rgba(201,163,91,0.08); }
+.task-text { flex: 1; }
+.task-label { font-size: 16px; color: var(--bone); }
+.task-card.done .task-label { color: var(--bone); }
+.task-meta { font-size: 13px; color: var(--bone-mute); margin-top: 2px; }
+.caret {
+  color: var(--bone-mute);
+  font-size: 18px;
+  transition: transform .25s ease;
+  display: inline-block;
+}
+.task-card.open .caret { transform: rotate(180deg); }
+.task-body {
+  display: none;
+  padding: 0 16px 16px;
+  border-top: 1px solid var(--line);
+}
+.task-card.open .task-body { display: block; padding-top: 14px; }
+.task-actions { margin-top: 12px; }
+
+.ref-summary {
+  font-size: 14.5px;
+  color: var(--bone-dim);
+  margin: 6px 0 12px;
+  line-height: 1.5;
+}
+.ref-steps {
+  padding-left: 20px;
+  margin: 8px 0 14px;
+  color: var(--bone-dim);
+  font-size: 14.5px;
+  line-height: 1.5;
+}
+.ref-steps li { margin-bottom: 6px; }
+
+/* ---------- Embedded YouTube ---------- */
+.yt-wrap { margin: 12px 0; }
+.yt-frame {
+  position: relative;
+  padding-bottom: 56.25%; /* 16:9 */
+  height: 0;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  background: #000;
+  border: 1px solid var(--line-2);
+}
+.yt-frame iframe {
+  position: absolute; top: 0; left: 0;
+  width: 100%; height: 100%;
+  border: 0;
+}
+.yt-caption {
+  font-size: 12px; color: var(--bone-mute);
+  margin-top: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.02em;
+}
+
+/* ---------- Reference link inside Jess bubble ---------- */
+.bubble.jess .ref-link {
+  color: var(--brass);
+  border-bottom: 1px dashed rgba(201,163,91,0.5);
+  cursor: pointer;
+  font-weight: 500;
+}
+.bubble.jess .ref-link:active { color: var(--ember); }
+
+/* ---------- Reference modal ---------- */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(10,8,6,0.6);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 100;
+  opacity: 0;
+  transition: opacity .2s ease;
+  display: flex; align-items: flex-end; justify-content: center;
+  padding: 0;
+}
+.modal-overlay.on { opacity: 1; }
+.modal {
+  width: 100%;
+  max-width: 480px;
+  max-height: 88dvh;
+  overflow-y: auto;
+  background: var(--ink);
+  border-top-left-radius: var(--r-lg);
+  border-top-right-radius: var(--r-lg);
+  border: 1px solid var(--line-2);
+  border-bottom: 0;
+  padding: 22px 22px calc(28px + var(--safe-b));
+  transform: translateY(40px);
+  transition: transform .25s ease;
+}
+.modal-overlay.on .modal { transform: translateY(0); }
+.modal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
+.modal h2 { margin-top: 4px; font-size: 26px; }
+
+/* ---------- Avatar with photo ---------- */
+.avatar-photo {
+  background-size: cover;
+  background-position: center 10%;
+  background-color: var(--ink-3);
+}
+
+/* ---------- Programs date column ---------- */
+.week-date {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--bone);
+  margin: 2px 0;
+}
+.week-day.today { border-color: var(--brass); background: linear-gradient(180deg, #2A2218 0%, #1F1A12 100%); }
+.week-day.today .week-dow { color: var(--brass); }
+.sub-help { padding: 0 var(--pad) 14px; color: var(--bone-mute); font-size: 13px; }
+
+/* ---------- Force iOS Safari to honor max-width on sections ---------- */
+.screen > * { max-width: 100%; }

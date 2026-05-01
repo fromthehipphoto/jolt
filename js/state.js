@@ -80,20 +80,59 @@ export function ensureDay(iso) {
         },
         steps: 0,
         briskMin: 0,
-        strength: { sets: [] }, // [{ lift, reps, load }]
+        strength: { sets: [] },
         z2Min: 0,
         yogaMin: 0,
         notes: '',
         tokenUsed: false,
+        contributions: {}, // checkKey -> {steps, briskMin, yogaMin, z2Min} added when checked
       };
     });
   }
+  // Backfill for previously-saved days that lacked contributions
+  if (!state.days[iso].contributions) state.days[iso].contributions = {};
   return state.days[iso];
 }
 
-export function setCheck(iso, key, val) {
+// Set a check ON or OFF, with reversible side-effects.
+// `contribution` is an optional {steps, briskMin, yogaMin, z2Min} delta to apply on check
+// and reverse on uncheck.
+export function setCheck(iso, key, val, contribution = null) {
   ensureDay(iso);
-  update((s) => { s.days[iso].checks[key] = val; });
+  update((s) => {
+    const day = s.days[iso];
+    const wasOn = !!day.checks[key];
+    day.checks[key] = !!val;
+    if (val && !wasOn && contribution) {
+      // Apply
+      day.steps    += contribution.steps    || 0;
+      day.briskMin += contribution.briskMin || 0;
+      day.yogaMin  += contribution.yogaMin  || 0;
+      day.z2Min    += contribution.z2Min    || 0;
+      day.contributions[key] = { ...contribution };
+    } else if (!val && wasOn && day.contributions[key]) {
+      // Reverse
+      const c = day.contributions[key];
+      day.steps    = Math.max(0, day.steps    - (c.steps    || 0));
+      day.briskMin = Math.max(0, day.briskMin - (c.briskMin || 0));
+      day.yogaMin  = Math.max(0, day.yogaMin  - (c.yogaMin  || 0));
+      day.z2Min    = Math.max(0, day.z2Min    - (c.z2Min    || 0));
+      delete day.contributions[key];
+    }
+  });
+}
+
+export function lastSavedAt() {
+  try {
+    // Use most recent message ts or day's modification -- approximate
+    const s = state;
+    const lastMsg = s.messages.length ? s.messages[s.messages.length-1].ts : 0;
+    return lastMsg || Date.now();
+  } catch (e) { return Date.now(); }
+}
+
+export function exportJSON() {
+  return JSON.stringify(state, null, 2);
 }
 
 export function logSet(iso, lift, reps, load) {
@@ -158,7 +197,7 @@ export function streak() {
     const d = new Date(); d.setDate(d.getDate()-i);
     const iso = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
     const day = state.days[iso];
-    if (!day && i === 0) { count++; continue; } // today not yet logged — be generous
+    if (!day && i === 0) { count++; continue; } // today not yet logged -- be generous
     if (!day) break;
     const sun = d.getDay() === 0;
     if (sun || isDayComplete(iso) || day.tokenUsed) { count++; continue; }

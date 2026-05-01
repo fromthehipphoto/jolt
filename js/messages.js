@@ -1,5 +1,5 @@
 // Generates Jess's contextual messages for the chat thread.
-// Called on app open + after each check-in. Idempotent — won't double-post the same kind for a given day-slot.
+// Called on app open + after each check-in. Idempotent -- won't double-post the same kind for a given day-slot.
 
 import * as state from './state.js';
 import { dayPlan } from '../data/program.js';
@@ -36,7 +36,7 @@ export function tickMessages() {
       { day: di+1, total: 84, session, note, prevDays: di },
       seed
     );
-    state.addMessage('jess', text + '\n\n— ' + SESSION_INTROS[sessionKey], 'morning');
+    state.addMessage('jess', text + '\n\n-- ' + SESSION_INTROS[sessionKey], 'morning');
     const milestone = checkMilestone(di);
     if (milestone) state.addMessage('jess', milestone, 'milestone');
   }

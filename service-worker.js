@@ -1,4 +1,4 @@
-const CACHE = 'jess-v1';
+const CACHE = 'jolt-v3';
 const ASSETS = [
   './',
   './index.html',
@@ -11,10 +11,15 @@ const ASSETS = [
   './js/messages.js',
   './data/program.js',
   './data/exercises.js',
-  './data/videos.js',
   './data/scripts.js',
+  './data/reference.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
+  './img/jess-portrait.jpg',
+  './img/hero-onboard.jpg',
+  './img/scene-walk.jpg',
+  './img/scene-strength.jpg',
+  './img/scene-lift.jpg',
 ];
 
 self.addEventListener('install', (e) => {

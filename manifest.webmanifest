@@ -1,7 +1,7 @@
 {
-  "name": "Coach Jess",
-  "short_name": "Jess",
-  "description": "Personal fitness with daily accountability.",
+  "name": "Jolt",
+  "short_name": "Jolt",
+  "description": "Personal fitness with daily accountability — coached by Jess.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

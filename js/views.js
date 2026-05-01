@@ -1,8 +1,9 @@
 import * as state from './state.js';
 import { go } from './router.js';
-import { dayPlan, PROGRAM, weekFor } from '../data/program.js';
+import { dayPlan, PROGRAM } from '../data/program.js';
 import { EXERCISES, MOBILITY_FLOWS } from '../data/exercises.js';
 import { SESSION_LABELS, SESSION_INTROS } from '../data/scripts.js';
+import { REFERENCE, CHECKIN_REF, TERMS } from '../data/reference.js';
 import { tickMessages, postComeback } from './messages.js';
 
 const $ = (sel, root=document) => root.querySelector(sel);
@@ -22,15 +23,15 @@ const el = (tag, attrs={}, kids=[]) => {
   return n;
 };
 
-function topbar(title, sub) {
-  return el('header', {class:'topbar'}, [
-    el('div', {class:'topbar-row'}, [
-      el('div', {class:'eyebrow'}, sub || ''),
-      el('h1', {}, title),
-    ]),
-  ]);
+// ---------- Brand mark ----------
+function joltLogo(size = 22) {
+  const svg = `<svg viewBox="0 0 24 36" width="${size}" height="${Math.round(size*1.5)}" aria-hidden="true">
+    <polygon points="12,1 19,1 13,15 21,15 8,35 14,19 5,19" fill="currentColor"/>
+  </svg>`;
+  return el('span', { class: 'logo-mark', html: svg });
 }
 
+// ---------- Tabbar ----------
 function tabbar(active) {
   const tabs = [
     { id:'#today',    label:'Today',    icon:dot() },
@@ -44,16 +45,26 @@ function tabbar(active) {
   );
 }
 
-// ------- Onboarding -------
+function topbar(title, sub) {
+  return el('header', {class:'topbar'}, [
+    el('div', {class:'topbar-row'}, [
+      el('div', {class:'eyebrow'}, sub || ''),
+      el('h1', {}, title),
+    ]),
+  ]);
+}
+
+// ---------- Onboarding ----------
 export function renderOnboarding(root) {
   const s = state.get();
-  const container = el('div', {class:'onboard'}, [
-    el('div', {class:'hero hero-onboard'}, [
-      el('div', {class:'hero-overlay'}),
+  root.append(el('div', {class:'onboard'}, [
+    el('div', {class:'hero hero-onboard photo-hero'}, [
+      el('div', {class:'hero-photo', style:'background-image:url(./img/hero-onboard.jpg)'}),
+      el('div', {class:'hero-photo-overlay'}),
       el('div', {class:'hero-text'}, [
-        el('div', {class:'eyebrow'}, 'Coach Jess'),
+        el('div', {class:'wordmark'}, [joltLogo(20), el('span',{class:'wordmark-text'}, 'Jolt')]),
         el('h1', {}, 'You showed up.'),
-        el('p', {class:'lede'}, "I'll handle the plan. You handle the work. We'll start small."),
+        el('p', {class:'lede'}, "I'm Jess. I'll handle the plan. You handle the work. We'll start small."),
       ]),
     ]),
     el('div', {class:'card form'}, [
@@ -63,7 +74,7 @@ export function renderOnboarding(root) {
       el('input', { id:'on-weight', type:'number', value: s.profile?.weightLb || 152 }),
       el('label', {}, 'Height (in)'),
       el('input', { id:'on-height', type:'number', value: s.profile?.heightIn || 70 }),
-      el('label', {}, 'Buddy email (optional — for weekly digest)'),
+      el('label', {}, 'Buddy email (optional -- for weekly digest)'),
       el('input', { id:'on-buddy', type:'email', placeholder:'someone@example.com', value: s.profile?.buddyEmail || '' }),
       el('button', { class:'btn primary', onclick:() => {
         state.update((st) => {
@@ -81,13 +92,12 @@ export function renderOnboarding(root) {
         tickMessages();
         go('#today');
       }}, 'Begin →'),
-      el('p', {class:'fineprint'}, "Everything stays on this device. Buddy email only used if you tap 'Send weekly digest' yourself."),
+      el('p', {class:'fineprint'}, "Everything stays on this device. We'll show you what's saved on the Progress screen."),
     ]),
-  ]);
-  root.append(container);
+  ]));
 }
 
-// ------- Today -------
+// ---------- Today ----------
 export function renderToday(root) {
   state.ensureTokenMonth();
   state.ensureDay(state.todayISO());
@@ -103,19 +113,19 @@ export function renderToday(root) {
 
   const heroTitle = sessionKey==='rest' ? 'Rest day.' : `Day ${di+1}.`;
 
-  const tasks = buildDailyTaskList(plan);
-
-  const root_ = el('div', {class:'screen'}, [
-    el('div', {class:'hero'}, [
-      el('div', {class:'hero-overlay'}),
-      el('div', {class:'hero-text'}, [
+  root.append(el('div', {class:'screen'}, [
+    el('div', {class:'hero photo-hero'}, [
+      el('div', {class:'hero-photo', style:'background-image:url(./img/jess-portrait.jpg)'}),
+      el('div', {class:'hero-photo-overlay'}),
+      el('div', {class:'hero-text hero-text-photo'}, [
         el('div', {class:'eyebrow'}, `Week ${plan.week.week} · ${plan.week.theme}`),
         el('h1', {}, heroTitle),
-        el('p', {class:'lede'}, plan.note || SESSION_INTROS[sessionKey]),
+        el('p', {class:'lede'}, latestJessLine() || (plan.note || SESSION_INTROS[sessionKey])),
       ]),
       el('div', {class:'hero-meta'}, [
         statBadge('STREAK', state.streak() + 'd'),
         statBadge('TOKENS', tokensLeft + ' left'),
+        statBadge('DAY', (di+1) + ' / 84'),
       ]),
     ]),
 
@@ -125,13 +135,16 @@ export function renderToday(root) {
           el('div', {class:'eyebrow'}, "TODAY'S MAIN"),
           el('div', {class:'session-title'}, sessionLabel),
         ]),
-        sessionKey !== 'rest' ? el('button', { class:'btn primary', onclick:() => go(`#workout/${sessionKey}`) }, 'Start →') : el('button', {class:'btn ghost', disabled:true}, 'Take it easy'),
+        sessionKey !== 'rest'
+          ? el('button', { class:'btn primary', onclick:() => go(`#workout/${sessionKey}`) }, 'Start →')
+          : el('button', {class:'btn ghost', disabled:true}, 'Take it easy'),
       ]),
     ]),
 
     el('section', {class:'tasks'}, [
       el('div', {class:'eyebrow'}, "TODAY'S CHECK-INS"),
-      ...tasks.map((t) => taskRow(t, day)),
+      el('p', {class:'tasks-help'}, 'Tap a row to expand instructions. Tap the circle to mark done. Un-checking reverses the count.'),
+      ...buildDailyTaskList(plan).map((t) => taskRow(t, day)),
     ]),
 
     el('section', {class:'card brick'}, [
@@ -147,59 +160,88 @@ export function renderToday(root) {
     ]),
 
     el('section', {class:'card jess-card'}, [
-      el('div', {class:'eyebrow'}, 'JESS'),
+      el('div', {class:'eyebrow'}, "JESS'S LATEST"),
       el('div', {class:'jess-quote'}, latestJessLine()),
       el('a', {href:'#jess', class:'btn ghost'}, 'Open thread →'),
     ]),
 
     tabbar('#today'),
-  ]);
-  root.append(root_);
+  ]));
 }
 
 function buildDailyTaskList(plan) {
   const t = plan.targets;
   return [
-    { key:'morningWalk',     label:'Morning walk',          detail:`${t.walk_min_morning} min, brisk` },
-    { key:'pelvicAM',        label:'Pelvic floor + reverse Kegels', detail:'10 reps × 3 sets, lying' },
-    { key:'mainSession',     label:`Main: ${SESSION_LABELS[plan.day.main]}`, detail:plan.day.main==='rest'?'auto-complete':'tap Start above' },
-    { key:'mobilityFlow',    label:'Mobility (5 min)',      detail:'Tom Merrick hip flow' },
-    { key:'postLunchWalk',   label:'Post-lunch walk',       detail:`${t.walk_min_postlunch} min` },
-    { key:'afternoonLight',  label:'Afternoon circulation', detail:'Calf raises + reverse Kegels + hip flexor' },
-    { key:'eveningWalk',     label:'Evening wind-down walk',detail:`${t.walk_min_postdinner} min, easy` },
+    { key:'morningWalk',    label:'Morning walk',                  detail:`${t.walk_min_morning} min, brisk`, refId:'morning-walk',          contribution:{ steps: Math.round(t.walk_min_morning*105), briskMin: t.walk_min_morning } },
+    { key:'pelvicAM',       label:'Pelvic floor + reverse Kegels', detail:'10 reps × 3 sets, lying',           refId:'pelvic-floor',           contribution:{} },
+    { key:'mainSession',    label:`Main: ${SESSION_LABELS[plan.day.main]}`, detail: plan.day.main==='rest' ? 'rest' : 'tap Start above', refId: mainRefFor(plan.day.main), contribution:{} },
+    { key:'mobilityFlow',   label:'Mobility (5 min)',              detail:'short hip + hamstring flow',         refId:'mobility-flow',          contribution:{ yogaMin: 5 } },
+    { key:'postLunchWalk',  label:'Post-lunch walk',               detail:`${t.walk_min_postlunch} min`,        refId:'post-lunch-walk',        contribution:{ steps: Math.round(t.walk_min_postlunch*105), briskMin: t.walk_min_postlunch } },
+    { key:'afternoonLight', label:'Afternoon circulation',         detail:'5-min movement snack',                refId:'afternoon-circulation',  contribution:{} },
+    { key:'eveningWalk',    label:'Evening wind-down walk',        detail:`${t.walk_min_postdinner} min, easy`, refId:'evening-walk',           contribution:{ steps: Math.round(t.walk_min_postdinner*105), briskMin: 0 } },
   ];
 }
 
+function mainRefFor(sessionKey) {
+  return ({
+    strengthA: 'goblet-squat', strengthB: 'db-rdl', yoga: 'yoga', z2: 'z2-bike', longwalk: 'long-walk', rest: null,
+  })[sessionKey] || null;
+}
+
 function taskRow(t, day) {
-  const done = day.checks[t.key];
-  return el('button', {
-    class:'task' + (done?' done':''),
-    onclick: () => {
-      state.setCheck(state.todayISO(), t.key, !done);
-      // small contextual log
-      if (!done && t.key === 'morningWalk') state.logWalk(state.todayISO(), 10, true);
-      if (!done && t.key === 'postLunchWalk') state.logWalk(state.todayISO(), 12, true);
-      if (!done && t.key === 'eveningWalk') state.logWalk(state.todayISO(), 15, false);
-      if (!done && t.key === 'mobilityFlow') state.logYoga(state.todayISO(), 5);
-    }
-  }, [
-    el('span', {class:'check'}, done ? '✓' : ''),
+  const done = !!day.checks[t.key];
+  const ref = t.refId ? REFERENCE[t.refId] : null;
+
+  const checkBtn = el('button', {
+    class:'check-btn',
+    'aria-label': done ? 'Mark not done' : 'Mark done',
+    onclick: (e) => {
+      e.stopPropagation();
+      state.setCheck(state.todayISO(), t.key, !done, t.contribution || {});
+    },
+  }, done ? '✓' : '');
+
+  const head = el('div', {class:'task-head', onclick: (ev) => {
+    // Toggle expand
+    const card = ev.currentTarget.closest('.task-card');
+    card.classList.toggle('open');
+  }}, [
+    checkBtn,
     el('div', {class:'task-text'}, [
       el('div', {class:'task-label'}, t.label),
       el('div', {class:'task-meta'}, t.detail),
     ]),
+    el('span', {class:'caret'}, '⌄'),
   ]);
+
+  const body = ref ? el('div', {class:'task-body'}, [
+    el('p', {class:'ref-summary'}, ref.summary),
+    el('div', {class:'eyebrow'}, 'HOW'),
+    el('ol', {class:'ref-steps'}, ref.steps.map((s) => el('li', {}, s))),
+    embedYouTube(ref.video.id, ref.video.title),
+    el('div', {class:'task-actions'}, [
+      el('button', {class:'btn primary small', onclick: () => {
+        if (!day.checks[t.key]) state.setCheck(state.todayISO(), t.key, true, t.contribution || {});
+        else state.setCheck(state.todayISO(), t.key, false, t.contribution || {});
+      }}, done ? 'Mark not done' : 'Mark done'),
+    ]),
+  ]) : el('div', {class:'task-body'}, [el('p', {}, 'Open the main workout above for instructions.')]);
+
+  return el('div', {class:'task-card' + (done ? ' done' : '')}, [head, body]);
 }
 
 function quickWalk(min, brisk) {
-  state.logWalk(state.todayISO(), min, brisk);
+  const today = state.todayISO();
+  state.ensureDay(today);
+  state.update((s) => {
+    s.days[today].steps += Math.round(min * 105);
+    if (brisk) s.days[today].briskMin += min;
+  });
 }
 
 function stepBar(val, target) {
   const pct = Math.min(100, Math.round((val/target)*100));
-  return el('div', {class:'bar'}, [
-    el('div', {class:'bar-fill', style:`width:${pct}%`}),
-  ]);
+  return el('div', {class:'bar'}, [el('div', {class:'bar-fill', style:`width:${pct}%`})]);
 }
 
 function statBadge(label, val) {
@@ -208,13 +250,31 @@ function statBadge(label, val) {
 
 function latestJessLine() {
   const s = state.get();
-  const last = [...s.messages].reverse().find((m) => m.role==='jess');
+  const last = [...s.messages].reverse().find((m) => m.role==='jess' && m.kind !== 'milestone');
   return last?.text || "I'll write to you in the morning.";
 }
 
-// ------- Workout Player -------
+// ---------- Embedded YouTube ----------
+function embedYouTube(id, title) {
+  const wrap = el('div', {class:'yt-wrap'}, [
+    el('div', {class:'yt-frame'}, [
+      el('iframe', {
+        src: `https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1`,
+        title: title || 'video',
+        frameborder: '0',
+        allow: 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share',
+        referrerpolicy: 'strict-origin-when-cross-origin',
+        allowfullscreen: true,
+        loading: 'lazy',
+      })
+    ]),
+    el('div', {class:'yt-caption'}, title),
+  ]);
+  return wrap;
+}
+
+// ---------- Workout Player ----------
 export function renderWorkout(root, sessionKey) {
-  const s = state.get();
   const plan = dayPlan(state.dayIndex());
   if (sessionKey === 'strengthA' || sessionKey === 'strengthB') return renderStrength(root, sessionKey, plan);
   if (sessionKey === 'yoga') return renderYoga(root, plan);
@@ -229,7 +289,8 @@ function renderStrength(root, key, plan) {
   const today = state.todayISO();
 
   const liftCards = lifts.map((lift) => {
-    const ex = EXERCISES[lift] || { cues:[], video:null };
+    const refId = liftToRef(lift);
+    const ref = REFERENCE[refId];
     const load = loads[lift];
     const setRow = el('div', {class:'set-row'});
     for (let i=1;i<=sets;i++) {
@@ -245,19 +306,12 @@ function renderStrength(root, key, plan) {
         el('h2', {}, lift),
         load ? el('div', {class:'load-pill'}, `${load} lb`) : null,
       ]),
-      el('ul', {class:'cues'}, ex.cues.map((c) => el('li',{},c))),
-      ex.video ? el('a', {class:'video-pill', href:ex.video.url, target:'_blank', rel:'noopener'}, [
-        el('span', {class:'play'}, '▶'),
-        el('span', {}, ex.video.title),
-      ]) : null,
+      el('p', {class:'ref-summary'}, ref?.summary || ''),
+      el('ol', {class:'ref-steps'}, (ref?.steps || []).map((s) => el('li',{},s))),
+      ref?.video ? embedYouTube(ref.video.id, ref.video.title) : null,
       setRow,
     ]);
   });
-
-  const finishBtn = el('button', { class:'btn primary big', onclick:() => {
-    state.setCheck(today, 'mainSession', true);
-    go('#today');
-  }}, 'Finish session');
 
   root.append(el('div',{class:'screen'},[
     el('div', {class:'topbar'}, [
@@ -265,30 +319,53 @@ function renderStrength(root, key, plan) {
       el('div', {class:'eyebrow'}, `Week ${plan.week.week} · ${SESSION_LABELS[key]}`),
       el('h1', {}, 'Lift.'),
     ]),
+
+    el('section', {class:'hero photo-hero hero-compact'}, [
+      el('div', {class:'hero-photo', style:'background-image:url(./img/scene-strength.jpg)'}),
+      el('div', {class:'hero-photo-overlay'}),
+      el('div', {class:'hero-text'}, [
+        el('p', {class:'lede'}, "Form before load. Two seconds down on every rep. Earn the next set."),
+      ]),
+    ]),
+
     el('section', {class:'card warmup'}, [
-      el('div', {class:'eyebrow'}, 'WARMUP — 4 MIN'),
+      el('div', {class:'eyebrow'}, 'WARMUP -- 4 MIN'),
       el('div', {}, '1 min march · 30 s arm circles · 30 s deep squat hold · 1 min hip flexor stretch · 1 min thoracic openers'),
     ]),
     ...liftCards,
     el('section', {class:'card lift-card'}, [
-      el('div', {class:'lift-head'}, [el('h2', {}, 'Pelvic Floor — finisher')]),
-      el('ul', {class:'cues'}, EXERCISES['Pelvic Floor Set'].cues.map((c) => el('li',{},c))),
-      el('a', {class:'video-pill', href:EXERCISES['Pelvic Floor Set'].video.url, target:'_blank', rel:'noopener'}, [
-        el('span',{class:'play'},'▶'), el('span',{}, EXERCISES['Pelvic Floor Set'].video.title)
-      ]),
+      el('div', {class:'lift-head'}, [el('h2', {}, 'Pelvic Floor -- finisher')]),
+      el('p', {class:'ref-summary'}, REFERENCE['pelvic-floor'].summary),
+      el('ol', {class:'ref-steps'}, REFERENCE['pelvic-floor'].steps.map((s) => el('li',{},s))),
+      embedYouTube(REFERENCE['pelvic-floor'].video.id, REFERENCE['pelvic-floor'].video.title),
       el('button', {class:'set-btn', onclick: (e) => {
         state.setCheck(today, 'pelvicAM', true);
         e.target.classList.add('done'); e.target.textContent = '✓ Pelvic floor logged';
       }}, 'Tap when done'),
     ]),
-    finishBtn,
+    el('button', { class:'btn primary big', onclick:() => {
+      state.setCheck(today, 'mainSession', true);
+      go('#today');
+    }}, 'Finish session'),
   ]));
+}
+
+function liftToRef(lift) {
+  return ({
+    'Goblet Squat':'goblet-squat',
+    'DB Bench':'db-bench',
+    'DB Row':'db-row',
+    'DB Romanian Deadlift':'db-rdl',
+    'DB Overhead Press':'db-ohp',
+    'Pelvic Floor Set':'pelvic-floor',
+  })[lift] || null;
 }
 
 function renderYoga(root, plan) {
   const today = state.todayISO();
   const min = plan.targets.yoga_min;
   const flow = pickYogaFlow(min);
+  const id = ytIdFromUrl(flow.url);
   let timer = null, secs = min*60, started = false;
   const timerEl = el('div', {class:'big-num timer'}, fmtMM(secs));
 
@@ -304,19 +381,14 @@ function renderYoga(root, plan) {
       el('h1', {}, 'Yoga.'),
     ]),
     el('section', {class:'card video-hero'}, [
-      el('div', {class:'eyebrow'}, 'TAP TO OPEN ON YOUTUBE'),
-      el('a', {href:flow.url, target:'_blank', rel:'noopener', class:'video-card'}, [
-        el('div',{class:'video-title'}, flow.title),
-        el('div',{class:'video-author'}, flow.author),
-        el('div',{class:'play-large'},'▶'),
-      ]),
+      el('div', {class:'eyebrow'}, 'FOLLOW ALONG'),
+      embedYouTube(id, flow.title),
+      el('div', {class:'meta'}, flow.author),
     ]),
     el('section', {class:'card timer-card'}, [
       el('div', {class:'eyebrow'}, `${min}-MIN TIMER`),
       timerEl,
-      el('div', {class:'row gap-sm'}, [
-        (() => { const b = el('button',{class:'btn primary', onclick:()=>toggle(b)}, 'Start'); return b; })(),
-      ]),
+      (() => { const b = el('button',{class:'btn primary', onclick:()=>toggle(b)}, 'Start'); return b; })(),
     ]),
     el('button', {class:'btn primary big', onclick:() => {
       state.logYoga(today, min);
@@ -325,6 +397,15 @@ function renderYoga(root, plan) {
       go('#today');
     }}, 'Mark complete'),
   ]));
+}
+
+function ytIdFromUrl(url) {
+  try {
+    const u = new URL(url);
+    if (u.searchParams.get('v')) return u.searchParams.get('v');
+    if (u.hostname.includes('youtu.be')) return u.pathname.slice(1);
+  } catch (e) {}
+  return 'v7AYKMP6rOE';
 }
 
 function pickYogaFlow(min) {
@@ -341,23 +422,18 @@ function renderZ2(root, plan) {
   const timerEl = el('div',{class:'big-num timer'}, fmtMM(secs));
   function tick(){ secs--; timerEl.textContent=fmtMM(secs); if (secs<=0){clearInterval(timer); timerEl.textContent='Done';} }
   function toggle(btn){ if(!started){timer=setInterval(tick,1000);started=true;btn.textContent='Pause';} else {clearInterval(timer);started=false;btn.textContent='Resume';} }
+  const ref = REFERENCE['z2-bike'];
 
   root.append(el('div',{class:'screen'},[
     el('div',{class:'topbar'},[ el('a',{href:'#today',class:'back'},'← Back'), el('h1',{},'Zone 2 bike.') ]),
     el('section',{class:'card'},[
       el('div',{class:'eyebrow'},'EFFORT'),
-      el('p',{class:'lede'},"Easy. You should be able to read or take a call. RPE 3–4 of 10. Nasal breathing if you can."),
+      el('p',{class:'ref-summary'}, ref.summary),
+      el('ol',{class:'ref-steps'}, ref.steps.map((s) => el('li',{},s))),
+      embedYouTube(ref.video.id, ref.video.title),
       el('div',{class:'eyebrow'}, `${min}-MIN TIMER`),
       timerEl,
       (() => { const b = el('button',{class:'btn primary', onclick:()=>toggle(b)},'Start'); return b; })(),
-    ]),
-    el('section',{class:'card'},[
-      el('div',{class:'eyebrow'},'WHILE YOU RIDE'),
-      el('ul',{class:'cues'},[
-        el('li',{},'Read a chapter of something. Or watch with subtitles.'),
-        el('li',{},'Cadence steady. No surges.'),
-        el('li',{},'Sip water. Refill when timer hits halfway.'),
-      ]),
     ]),
     el('button',{class:'btn primary big', onclick:()=>{ state.logZ2(today,min); state.setCheck(today,'mainSession',true); go('#today'); }},'Mark complete'),
   ]));
@@ -370,11 +446,17 @@ function renderLongWalk(root, plan) {
   const timerEl = el('div',{class:'big-num timer'}, fmtMM(secs));
   function tick(){ secs--; timerEl.textContent=fmtMM(secs); if(secs<=0){clearInterval(timer); timerEl.textContent='Done';} }
   function toggle(btn){ if(!started){timer=setInterval(tick,1000);started=true;btn.textContent='Pause';} else {clearInterval(timer);started=false;btn.textContent='Resume';} }
+  const ref = REFERENCE['long-walk'];
 
   root.append(el('div',{class:'screen'},[
     el('div',{class:'topbar'},[ el('a',{href:'#today',class:'back'},'← Back'), el('h1',{},'Long walk.') ]),
+    el('section', {class:'hero photo-hero hero-compact'}, [
+      el('div', {class:'hero-photo', style:'background-image:url(./img/scene-walk.jpg)'}),
+      el('div', {class:'hero-photo-overlay'}),
+      el('div', {class:'hero-text'}, [el('p', {class:'lede'}, ref.summary)]),
+    ]),
     el('section',{class:'card'},[
-      el('p',{class:'lede'},"Outside if you can. Brisk first ten, easy after. Cadence around 110 steps/min for the brisk segment."),
+      el('ol',{class:'ref-steps'}, ref.steps.map((s) => el('li',{},s))),
       timerEl,
       (() => { const b=el('button',{class:'btn primary',onclick:()=>toggle(b)},'Start'); return b; })(),
     ]),
@@ -382,41 +464,54 @@ function renderLongWalk(root, plan) {
   ]));
 }
 
-function fmtMM(s) {
-  s = Math.max(0,s);
-  const m = Math.floor(s/60), r = s%60;
-  return `${String(m).padStart(2,'0')}:${String(r).padStart(2,'0')}`;
-}
+function fmtMM(s) { s = Math.max(0,s); const m = Math.floor(s/60), r = s%60; return `${String(m).padStart(2,'0')}:${String(r).padStart(2,'0')}`; }
 
-// ------- Programs -------
+// ---------- Programs (rotated to start on user start day) ----------
 export function renderPrograms(root) {
   const di = state.dayIndex();
   const cur = Math.floor(di/7);
+  const startDate = state.get().profile?.startDate;
+  const startDow = startDate ? new Date(startDate + 'T00:00:00').getDay() : 1; // 0=Sun, 1=Mon, ..., 6=Sat
+  const dowLetters = ['S','M','T','W','T','F','S'];
+
   root.append(el('div',{class:'screen'},[
     topbar('The 12 weeks.', 'PROGRAM'),
+    el('p', {class:'sub-help'}, "Each week starts on your start day. Today's the brass-edged card."),
     el('section', {class:'weeks'}, PROGRAM.map((w, i) => el('div', {class:'week-card' + (i===cur?' current':'')}, [
       el('div', {class:'week-head'}, [
         el('div', {class:'week-num'}, `WEEK ${w.week}`),
         i===cur ? el('div', {class:'week-tag'}, 'NOW') : null,
       ]),
       el('div', {class:'week-theme'}, w.theme),
-      el('div', {class:'week-grid'}, w.days.map((d) => el('div', {class:'week-day'}, [
-        el('div', {class:'week-dow'}, d.d),
-        el('div', {class:'week-main'}, SESSION_LABELS[d.main]),
-      ]))),
+      el('div', {class:'week-grid'}, w.days.map((d, idx) => {
+        const dowIndex = (startDow + idx) % 7;
+        const date = startDate ? addDays(startDate, i*7 + idx) : null;
+        const isToday = (i*7 + idx) === di;
+        return el('div', {class:'week-day' + (isToday ? ' today' : '')}, [
+          el('div', {class:'week-dow'}, dowLetters[dowIndex]),
+          date ? el('div', {class:'week-date'}, date.getDate()) : null,
+          el('div', {class:'week-main'}, SESSION_LABELS[d.main]),
+        ]);
+      })),
     ]))),
     tabbar('#programs'),
   ]));
 }
 
-// ------- Jess thread -------
+function addDays(iso, n) {
+  const d = new Date(iso + 'T00:00:00');
+  d.setDate(d.getDate() + n);
+  return d;
+}
+
+// ---------- Jess thread ----------
 export function renderJess(root) {
   tickMessages();
   const s = state.get();
   const messages = s.messages.slice(-50);
   root.append(el('div',{class:'screen jess-screen'},[
     el('header',{class:'topbar jess-topbar'}, [
-      el('div',{class:'avatar'}, 'J'),
+      el('div', {class:'avatar avatar-photo', style:'background-image:url(./img/jess-portrait.jpg)'}),
       el('div',{}, [
         el('div',{class:'jess-name'},'Jess'),
         el('div',{class:'jess-sub'}, `Day ${state.dayIndex()+1} · ${state.streak()}d streak`),
@@ -424,7 +519,7 @@ export function renderJess(root) {
     ]),
     el('section',{class:'thread'}, messages.length === 0 ? [
       el('div',{class:'thread-empty'},"I'll write to you in the morning."),
-    ] : messages.map((m) => el('div',{class:`bubble ${m.role}`}, m.text))),
+    ] : messages.map((m) => bubbleEl(m))),
     el('section',{class:'card reply-card'},[
       el('div',{class:'eyebrow'},'YOUR REPLY'),
       el('div',{class:'row gap-sm'}, [
@@ -438,6 +533,72 @@ export function renderJess(root) {
   ]));
 }
 
+function bubbleEl(m) {
+  const div = el('div', {class:`bubble ${m.role}`});
+  if (m.role === 'jess') {
+    // Linkify any reference terms
+    const linked = linkifyTerms(m.text);
+    div.append(linked);
+  } else {
+    div.textContent = m.text;
+  }
+  return div;
+}
+
+function linkifyTerms(text) {
+  const frag = document.createDocumentFragment();
+  let cursor = 0;
+  const sorted = [...TERMS].sort((a, b) => b[0].length - a[0].length);
+  const pattern = sorted.map(([t]) => escapeRegex(t)).join('|');
+  if (!pattern) { frag.append(text); return frag; }
+  const re = new RegExp(`(${pattern})`, 'gi');
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const idx = m.index;
+    if (idx > cursor) frag.append(text.slice(cursor, idx));
+    const matched = m[0];
+    const lc = matched.toLowerCase();
+    const refId = sorted.find(([t]) => t.toLowerCase() === lc)?.[1];
+    const span = el('span', { class:'ref-link', onclick: () => openRefModal(refId) }, matched);
+    frag.append(span);
+    cursor = idx + matched.length;
+  }
+  if (cursor < text.length) frag.append(text.slice(cursor));
+  return frag;
+}
+
+function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+// ---------- Reference modal ----------
+function openRefModal(refId) {
+  const ref = REFERENCE[refId];
+  if (!ref) return;
+  const overlay = el('div', {class:'modal-overlay', onclick: (e) => {
+    if (e.target === overlay) closeModal(overlay);
+  }}, [
+    el('div', {class:'modal'}, [
+      el('div', {class:'modal-head'}, [
+        el('div', {}, [
+          el('div', {class:'eyebrow'}, 'REFERENCE'),
+          el('h2', {}, ref.name),
+        ]),
+        el('button', {class:'btn small ghost', onclick: () => closeModal(overlay)}, 'Close'),
+      ]),
+      el('p', {class:'ref-summary'}, ref.summary),
+      el('div', {class:'eyebrow'}, 'HOW'),
+      el('ol', {class:'ref-steps'}, ref.steps.map((s) => el('li', {}, s))),
+      embedYouTube(ref.video.id, ref.video.title),
+    ]),
+  ]);
+  document.body.append(overlay);
+  setTimeout(() => overlay.classList.add('on'), 10);
+}
+
+function closeModal(overlay) {
+  overlay.classList.remove('on');
+  setTimeout(() => overlay.remove(), 200);
+}
+
 function replyChip(text) {
   return el('button', {class:'chip', onclick:() => {
     state.addMessage('you', text, 'reply');
@@ -445,17 +606,17 @@ function replyChip(text) {
       const ok = state.spendToken();
       if (ok) {
         const today = state.todayISO();
-        state.update((s) => { s.days[today] = s.days[today] || {}; s.days[today].tokenUsed = true; });
+        state.update((s) => { if (s.days[today]) s.days[today].tokenUsed = true; });
         state.addMessage('jess', "Token spent. No streak break. Tomorrow we go.", 'token');
       } else {
-        state.addMessage('jess', "Out of tokens this month. The streak will pause — comeback streaks count too.", 'token');
+        state.addMessage('jess', "Out of tokens this month. The streak will pause -- comeback streaks count too.", 'token');
       }
     }
     if (text.startsWith("I'm back")) postComeback();
   }}, text);
 }
 
-// ------- Progress -------
+// ---------- Progress ----------
 export function renderProgress(root) {
   const s = state.get();
   const t = state.totals();
@@ -468,6 +629,8 @@ export function renderProgress(root) {
     const day = s.days[iso];
     last14.push({ iso, day, label: ['S','M','T','W','T','F','S'][d.getDay()] });
   }
+
+  const lastSaved = new Date(state.lastSavedAt());
 
   root.append(el('div',{class:'screen'}, [
     topbar('Progress.', 'YOU OVER TIME'),
@@ -498,7 +661,7 @@ export function renderProgress(root) {
     ]),
 
     el('section', {class:'card'}, [
-      el('div',{class:'eyebrow'},'WEEKLY METRICS — log when ready'),
+      el('div',{class:'eyebrow'},'WEEKLY METRICS -- log when ready'),
       metricInput('sitAndReachCm','Sit-and-reach (cm)'),
       metricInput('shoulderReach','Shoulder reach (1–10)'),
       metricInput('deepSquat','Deep squat hold (sec)'),
@@ -512,15 +675,20 @@ export function renderProgress(root) {
       el('button',{class:'btn primary', onclick:() => copyDigestLink()}, 'Copy weekly digest link'),
     ]),
 
+    el('section', {class:'card'}, [
+      el('div',{class:'eyebrow'},'STORAGE'),
+      el('div',{class:'meta'}, `${Object.keys(s.days).length} days logged · last saved ${lastSaved.toLocaleString()} · stored on this device`),
+      el('div',{class:'row gap-sm', style:'margin-top:10px;'}, [
+        el('button', {class:'btn small', onclick: () => downloadJSON()}, 'Export JSON'),
+      ]),
+    ]),
+
     tabbar('#progress'),
   ]));
 }
 
 function bigStat(label, val) {
-  return el('div',{class:'card stat'},[
-    el('div',{class:'eyebrow'},label),
-    el('div',{class:'big-num'}, val),
-  ]);
+  return el('div',{class:'card stat'},[el('div',{class:'eyebrow'},label), el('div',{class:'big-num'}, val)]);
 }
 
 function metricInput(metric, label) {
@@ -547,14 +715,20 @@ function copyDigestLink() {
   const payload = { name: s.profile?.name, days: last7, streak: state.streak(), totals: state.totals() };
   const enc = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
   const url = location.origin + location.pathname.replace(/index\.html?$/,'') + 'digest.html#' + enc;
-  navigator.clipboard.writeText(url).then(() => {
-    alert('Digest link copied. Share it with your buddy.');
-  }).catch(() => {
-    prompt('Copy this digest link:', url);
-  });
+  navigator.clipboard.writeText(url).then(() => alert('Digest link copied. Share it with your buddy.'))
+    .catch(() => prompt('Copy this digest link:', url));
 }
 
-// ------- Settings -------
+function downloadJSON() {
+  const blob = new Blob([state.exportJSON()], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = el('a', { href: url, download: `jolt-${state.todayISO()}.json` });
+  document.body.append(a);
+  a.click();
+  setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 500);
+}
+
+// ---------- Settings ----------
 export function renderSettings(root) {
   const s = state.get();
   root.append(el('div',{class:'screen'},[
@@ -600,12 +774,12 @@ export function renderSettings(root) {
   ]));
 }
 
-// SVG icons
-function dot()   { return svg('<circle cx="12" cy="12" r="4" fill="currentColor"/>'); }
-function bars()  { return svg('<rect x="4" y="14" width="3" height="6" fill="currentColor"/><rect x="10.5" y="9" width="3" height="11" fill="currentColor"/><rect x="17" y="4" width="3" height="16" fill="currentColor"/>'); }
-function speak() { return svg('<path d="M4 6h16v10H8l-4 4z" stroke="currentColor" stroke-width="1.5" fill="none"/>'); }
-function chart() { return svg('<polyline points="3,18 9,12 13,15 21,5" stroke="currentColor" stroke-width="1.8" fill="none"/>'); }
-function gear()  { return svg('<circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3" stroke="currentColor" stroke-width="1.5"/>'); }
-function svg(inner) {
+// ---------- icons ----------
+function dot()   { return svgwrap('<circle cx="12" cy="12" r="4" fill="currentColor"/>'); }
+function bars()  { return svgwrap('<rect x="4" y="14" width="3" height="6" fill="currentColor"/><rect x="10.5" y="9" width="3" height="11" fill="currentColor"/><rect x="17" y="4" width="3" height="16" fill="currentColor"/>'); }
+function speak() { return svgwrap('<path d="M4 6h16v10H8l-4 4z" stroke="currentColor" stroke-width="1.5" fill="none"/>'); }
+function chart() { return svgwrap('<polyline points="3,18 9,12 13,15 21,5" stroke="currentColor" stroke-width="1.8" fill="none"/>'); }
+function gear()  { return svgwrap('<circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3" stroke="currentColor" stroke-width="1.5"/>'); }
+function svgwrap(inner) {
   const wrap = document.createElement('div'); wrap.className='ico'; wrap.innerHTML = `<svg viewBox="0 0 24 24">${inner}</svg>`; return wrap;
 }
