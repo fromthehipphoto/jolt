@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Weekly digest — Coach Jess</title>
+<meta name="theme-color" content="#14110F" />
+<link rel="stylesheet" href="css/styles.css" />
+<style>
+  .digest-wrap { padding: max(20px, env(safe-area-inset-top)) 20px 40px; }
+  .digest-stat { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .digest-stat:last-child { border: 0; }
+  .digest-stat .label { font-size: 12px; letter-spacing: 0.18em; color: var(--bone-mute); text-transform: uppercase; }
+  .digest-stat .val { font-family: 'JetBrains Mono', monospace; font-size: 18px; color: var(--bone); }
+  .day-row { display: grid; grid-template-columns: 56px 1fr auto; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); align-items: center; }
+  .day-row:last-child { border: 0; }
+  .day-iso { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--bone-mute); }
+  .day-checks { font-size: 13px; color: var(--bone-dim); }
+  .day-tag { font-size: 11px; padding: 3px 8px; border-radius: 999px; background: var(--ink-3); color: var(--bone-mute); border: 1px solid var(--line); }
+  .day-tag.done { background: var(--brass); color: var(--ink); border-color: var(--brass); }
+  .day-tag.miss { background: rgba(255,107,61,0.12); color: var(--ember); border-color: rgba(255,107,61,0.3); }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="digest-wrap">
+    <div class="hero">
+      <div class="hero-text">
+        <div class="eyebrow">Weekly digest · Coach Jess</div>
+        <h1 id="title">…</h1>
+        <p class="lede" id="subtitle">Loading…</p>
+      </div>
+    </div>
+
+    <section class="card">
+      <div class="eyebrow">THIS WEEK</div>
+      <div id="totals"></div>
+    </section>
+
+    <section class="card">
+      <div class="eyebrow">DAY-BY-DAY</div>
+      <div id="days"></div>
+    </section>
+
+    <section class="card">
+      <div class="eyebrow">YOUR ROLE</div>
+      <p class="lede">You're his accountability buddy. The streak holds because someone's watching. A short text on Sunday night — "saw your week" — is enough.</p>
+    </section>
+  </div>
+</div>
+<script>
+  (function(){
+    try {
+      const enc = location.hash.slice(1);
+      if (!enc) throw new Error('no payload');
+      const json = decodeURIComponent(escape(atob(enc)));
+      const data = JSON.parse(json);
+      document.getElementById('title').textContent = (data.name || 'Friend') + "'s week";
+      document.getElementById('subtitle').textContent = `${data.streak} day streak · ${data.totals.daysActive} active days · ${data.totals.totalSteps.toLocaleString()} steps`;
+
+      const totals = data.totals;
+      const tEl = document.getElementById('totals');
+      const stat = (l, v) => `<div class="digest-stat"><div class="label">${l}</div><div class="val">${v}</div></div>`;
+      tEl.innerHTML = [
+        stat('Sessions', totals.sessions),
+        stat('Walks', totals.walks),
+        stat('Yoga min', totals.yogaMin),
+        stat('Z2 min', totals.z2Min),
+        stat('Pelvic sets', totals.pelvicSets),
+        stat('Brisk min', totals.totalBrisk),
+      ].join('');
+
+      const dEl = document.getElementById('days');
+      dEl.innerHTML = Object.entries(data.days).map(([iso, d]) => {
+        if (!d) return `<div class="day-row"><div class="day-iso">${iso}</div><div class="day-checks">—</div><div class="day-tag">no log</div></div>`;
+        const checksDone = Object.values(d.checks||{}).filter(Boolean).length;
+        const total = Object.keys(d.checks||{}).length;
+        const minimum = d.checks?.pelvicAM && (d.checks?.morningWalk || d.checks?.postLunchWalk || d.checks?.eveningWalk);
+        const tag = minimum ? '<div class="day-tag done">complete</div>' : (d.tokenUsed ? '<div class="day-tag">skip token</div>' : '<div class="day-tag miss">missed</div>');
+        return `<div class="day-row"><div class="day-iso">${iso}</div><div class="day-checks">${checksDone}/${total} checks · ${(d.steps||0).toLocaleString()} steps</div>${tag}</div>`;
+      }).join('');
+    } catch(e) {
+      document.getElementById('title').textContent = 'No data';
+      document.getElementById('subtitle').textContent = 'This digest link looks empty or invalid.';
+    }
+  })();
+</script>
+</body>
+</html>
