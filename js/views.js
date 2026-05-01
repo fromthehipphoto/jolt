@@ -202,22 +202,22 @@ function taskRow(t, day) {
   }, done ? '✓' : '');
 
   const head = el('div', {class:'task-head', onclick: (ev) => {
-    // Toggle expand
+    if (ev.target.closest('.ref-link')) return; // let term clicks open modal
     const card = ev.currentTarget.closest('.task-card');
     card.classList.toggle('open');
   }}, [
     checkBtn,
     el('div', {class:'task-text'}, [
-      el('div', {class:'task-label'}, t.label),
-      el('div', {class:'task-meta'}, t.detail),
+      el('div', {class:'task-label'}, linkifyTerms(t.label)),
+      el('div', {class:'task-meta'}, linkifyTerms(t.detail)),
     ]),
     el('span', {class:'caret'}, '⌄'),
   ]);
 
   const body = ref ? el('div', {class:'task-body'}, [
-    el('p', {class:'ref-summary'}, ref.summary),
+    el('p', {class:'ref-summary'}, linkifyTerms(ref.summary)),
     el('div', {class:'eyebrow'}, 'HOW'),
-    el('ol', {class:'ref-steps'}, ref.steps.map((s) => el('li', {}, s))),
+    el('ol', {class:'ref-steps'}, ref.steps.map((s) => el('li', {}, linkifyTerms(s)))),
     embedYouTube(ref.video.id, ref.video.title),
     el('div', {class:'task-actions'}, [
       el('button', {class:'btn primary small', onclick: () => {
@@ -306,8 +306,8 @@ function renderStrength(root, key, plan) {
         el('h2', {}, lift),
         load ? el('div', {class:'load-pill'}, `${load} lb`) : null,
       ]),
-      el('p', {class:'ref-summary'}, ref?.summary || ''),
-      el('ol', {class:'ref-steps'}, (ref?.steps || []).map((s) => el('li',{},s))),
+      el('p', {class:'ref-summary'}, linkifyTerms(ref?.summary || '')),
+      el('ol', {class:'ref-steps'}, (ref?.steps || []).map((s) => el('li',{},linkifyTerms(s)))),
       ref?.video ? embedYouTube(ref.video.id, ref.video.title) : null,
       setRow,
     ]);
@@ -335,8 +335,8 @@ function renderStrength(root, key, plan) {
     ...liftCards,
     el('section', {class:'card lift-card'}, [
       el('div', {class:'lift-head'}, [el('h2', {}, 'Pelvic Floor -- finisher')]),
-      el('p', {class:'ref-summary'}, REFERENCE['pelvic-floor'].summary),
-      el('ol', {class:'ref-steps'}, REFERENCE['pelvic-floor'].steps.map((s) => el('li',{},s))),
+      el('p', {class:'ref-summary'}, linkifyTerms(REFERENCE['pelvic-floor'].summary)),
+      el('ol', {class:'ref-steps'}, REFERENCE['pelvic-floor'].steps.map((s) => el('li',{},linkifyTerms(s)))),
       embedYouTube(REFERENCE['pelvic-floor'].video.id, REFERENCE['pelvic-floor'].video.title),
       el('button', {class:'set-btn', onclick: (e) => {
         state.setCheck(today, 'pelvicAM', true);
@@ -428,8 +428,8 @@ function renderZ2(root, plan) {
     el('div',{class:'topbar'},[ el('a',{href:'#today',class:'back'},'← Back'), el('h1',{},'Zone 2 bike.') ]),
     el('section',{class:'card'},[
       el('div',{class:'eyebrow'},'EFFORT'),
-      el('p',{class:'ref-summary'}, ref.summary),
-      el('ol',{class:'ref-steps'}, ref.steps.map((s) => el('li',{},s))),
+      el('p',{class:'ref-summary'}, linkifyTerms(ref.summary)),
+      el('ol',{class:'ref-steps'}, ref.steps.map((s) => el('li',{},linkifyTerms(s)))),
       embedYouTube(ref.video.id, ref.video.title),
       el('div',{class:'eyebrow'}, `${min}-MIN TIMER`),
       timerEl,
@@ -453,10 +453,10 @@ function renderLongWalk(root, plan) {
     el('section', {class:'hero photo-hero hero-compact'}, [
       el('div', {class:'hero-photo', style:'background-image:url(./img/scene-walk.jpg)'}),
       el('div', {class:'hero-photo-overlay'}),
-      el('div', {class:'hero-text'}, [el('p', {class:'lede'}, ref.summary)]),
+      el('div', {class:'hero-text'}, [el('p', {class:'lede'}, linkifyTerms(ref.summary))]),
     ]),
     el('section',{class:'card'},[
-      el('ol',{class:'ref-steps'}, ref.steps.map((s) => el('li',{},s))),
+      el('ol',{class:'ref-steps'}, ref.steps.map((s) => el('li',{},linkifyTerms(s)))),
       timerEl,
       (() => { const b=el('button',{class:'btn primary',onclick:()=>toggle(b)},'Start'); return b; })(),
     ]),
@@ -579,14 +579,14 @@ function openRefModal(refId) {
     el('div', {class:'modal'}, [
       el('div', {class:'modal-head'}, [
         el('div', {}, [
-          el('div', {class:'eyebrow'}, 'REFERENCE'),
+          el('div', {class:'eyebrow'}, ref.kind === 'source' ? 'SOURCE' : 'REFERENCE'),
           el('h2', {}, ref.name),
         ]),
         el('button', {class:'btn small ghost', onclick: () => closeModal(overlay)}, 'Close'),
       ]),
-      el('p', {class:'ref-summary'}, ref.summary),
+      el('p', {class:'ref-summary'}, linkifyTerms(ref.summary)),
       el('div', {class:'eyebrow'}, 'HOW'),
-      el('ol', {class:'ref-steps'}, ref.steps.map((s) => el('li', {}, s))),
+      el('ol', {class:'ref-steps'}, ref.steps.map((s) => el('li', {}, linkifyTerms(s)))),
       embedYouTube(ref.video.id, ref.video.title),
     ]),
   ]);

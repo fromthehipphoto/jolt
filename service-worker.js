@@ -1,4 +1,4 @@
-const CACHE = 'jolt-v3';
+const CACHE = 'jolt-v4';
 const ASSETS = [
   './',
   './index.html',

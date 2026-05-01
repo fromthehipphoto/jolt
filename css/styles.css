@@ -598,14 +598,18 @@ h2 { font-size: 22px; line-height: 1.15; }
   letter-spacing: 0.02em;
 }
 
-/* ---------- Reference link inside Jess bubble ---------- */
-.bubble.jess .ref-link {
+/* ---------- Reference links (brass, dashed) ---------- */
+.ref-link {
   color: var(--brass);
   border-bottom: 1px dashed rgba(201,163,91,0.5);
   cursor: pointer;
   font-weight: 500;
 }
-.bubble.jess .ref-link:active { color: var(--ember); }
+.ref-link:active { color: var(--ember); }
+/* On a dim/muted surface (task-meta, ref-summary), keep brass at full strength */
+.task-meta .ref-link,
+.ref-summary .ref-link,
+.ref-steps .ref-link { color: var(--brass); }
 
 /* ---------- Reference modal ---------- */
 .modal-overlay {
